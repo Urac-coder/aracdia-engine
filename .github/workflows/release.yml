@@ -1,0 +1,214 @@
+name: release
+
+# Triggers:
+# - push of a tag starting with `v` (e.g. `v0.1.0`) -> full build + GitHub Release
+# - manual dispatch -> dry-run build (artifacts only, no Release)
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Cancel any in-progress runs for the same tag
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # needed by softprops/action-gh-release
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # macOS (Apple Silicon)
+  # ---------------------------------------------------------------------------
+  macos-arm64:
+    name: macOS arm64
+    runs-on: macos-15
+    env:
+      TARGET: aarch64-apple-darwin
+      OSVER: "11.3"
+      XCODEVER: "16.2"
+      ARCH: arm64
+      BUILD_TYPE: Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install precompiled deps + macOS SDK
+        run: |
+          mkdir downloads
+          source ./util/ci/common.sh
+          source ./util/ci/macos_sdk.sh
+          install_macos_precompiled_deps "$OSVER" "$ARCH"
+          install_macos_sdk "$OSVER" "$XCODEVER" downloads
+
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          export DEPS_DIR=/Users/Shared/macos${OSVER}_${ARCH}_deps
+          export USE_XCODE=no
+          export osver=$OSVER
+          export arch=$ARCH
+          export build_type=$BUILD_TYPE
+          export xcodever=$XCODEVER
+          ../util/ci/build_macos.sh
+
+      - name: Package via CPack
+        working-directory: build
+        run: |
+          cpack -G ZIP -B macos
+          ls -la macos/
+
+      - name: Rename + sha256
+        run: |
+          src="$(ls build/macos/*.zip | head -1)"
+          out="aracdia-engine-${TARGET}.zip"
+          mv "$src" "$out"
+          shasum -a 256 "$out" | awk '{print $1}' > "${out}.sha256"
+          ls -la "$out"* && cat "${out}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aracdia-engine-${{ env.TARGET }}
+          path: |
+            aracdia-engine-${{ env.TARGET }}.zip
+            aracdia-engine-${{ env.TARGET }}.zip.sha256
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Linux x86_64
+  # ---------------------------------------------------------------------------
+  linux-x64:
+    name: Linux x86_64
+    runs-on: ubuntu-22.04
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install deps
+        run: |
+          source ./util/ci/common.sh
+          install_linux_deps g++-11 zip
+
+      - name: Build (RUN_IN_PLACE=FALSE)
+        env:
+          CC: gcc-11
+          CXX: g++-11
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DRUN_IN_PLACE=FALSE \
+            -DCMAKE_INSTALL_PREFIX=$(pwd)/install \
+            -DENABLE_LTO=FALSE \
+            -DBUILD_SERVER=TRUE \
+            -DBUILD_CLIENT=TRUE
+          cmake --build build --parallel $(($(nproc) + 1))
+          cmake --install build
+
+      - name: Package
+        run: |
+          out="aracdia-engine-${TARGET}.zip"
+          # Repackage the install/ tree as the engine root expected by the launcher
+          (cd install && zip -r "../$out" .)
+          shasum -a 256 "$out" | awk '{print $1}' > "${out}.sha256"
+          ls -la "$out"* && cat "${out}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aracdia-engine-${{ env.TARGET }}
+          path: |
+            aracdia-engine-${{ env.TARGET }}.zip
+            aracdia-engine-${{ env.TARGET }}.zip.sha256
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Windows x86_64 (MSVC)
+  # ---------------------------------------------------------------------------
+  windows-x64:
+    name: Windows x86_64
+    runs-on: windows-2025
+    env:
+      TARGET: x86_64-pc-windows-msvc
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}\vcpkg'
+
+      - name: CMake configure
+        shell: pwsh
+        run: |
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+            -DENABLE_POSTGRESQL=OFF `
+            -DENABLE_LUAJIT=TRUE `
+            -DREQUIRE_LUAJIT=TRUE `
+            -DRUN_IN_PLACE=1 .
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build . --config Release --parallel
+
+      - name: Package via CPack
+        shell: pwsh
+        run: |
+          cpack -G ZIP -B Package
+          Remove-Item -Recurse -Force Package\_CPack_Packages -ErrorAction SilentlyContinue
+          Get-ChildItem Package\*.zip
+
+      - name: Rename + sha256
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem Package\*.zip | Select-Object -First 1
+          $out = "aracdia-engine-$env:TARGET.zip"
+          Move-Item $src.FullName $out
+          $hash = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLower()
+          Set-Content -NoNewline -Path "$out.sha256" -Value $hash
+          Get-Item "$out*"
+          Get-Content "$out.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aracdia-engine-${{ env.TARGET }}
+          path: |
+            aracdia-engine-${{ env.TARGET }}.zip
+            aracdia-engine-${{ env.TARGET }}.zip.sha256
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Publish a GitHub Release with all artifacts (only on tag pushes)
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish release
+    needs: [macos-arm64, linux-x64, windows-x64]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name '*.zip' -o -name '*.sha256' \) -exec cp -v {} release-assets/ \;
+          ls -la release-assets/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
