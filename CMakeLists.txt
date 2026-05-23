@@ -39,6 +39,7 @@ set(BUILD_SERVER FALSE CACHE BOOL "Build server")
 set(BUILD_UNITTESTS TRUE CACHE BOOL "Build unittests")
 set(BUILD_BENCHMARKS FALSE CACHE BOOL "Build benchmarks")
 set(BUILD_DOCUMENTATION TRUE CACHE BOOL "Build documentation")
+option(ENABLE_ARACDIA_RMLUI "Build Aracdia native RmlUi overlay" ON)
 
 set(DEFAULT_ENABLE_LTO TRUE)
 # by default don't enable on Debug builds to get faster builds
@@ -296,6 +297,10 @@ if(BUILD_UNITTESTS OR BUILD_BENCHMARKS)
 endif()
 
 add_subdirectory(lib/tiniergltf)
+
+if(BUILD_CLIENT AND ENABLE_ARACDIA_RMLUI)
+	include(cmake/AracdiaRmlUi.cmake)
+endif()
 
 # Subdirectories
 # Be sure to add all relevant definitions above this

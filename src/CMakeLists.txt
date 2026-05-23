@@ -704,6 +704,12 @@ if(BUILD_CLIENT)
 		# on other platforms, only IrrlichtMt depends on SDL2
 		"$<$<PLATFORM_ID:Android>:${SDL2_LIBRARIES}>"
 	)
+	if(ENABLE_ARACDIA_RMLUI)
+		target_sources(${PROJECT_NAME} PRIVATE ${ARACDIA_RMLUI_SOURCES})
+		target_include_directories(${PROJECT_NAME} PRIVATE ${ARACDIA_RMLUI_INCLUDES})
+		target_link_libraries(${PROJECT_NAME} ${ARACDIA_RMLUI_LIBRARIES})
+		target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_ARACDIA_RMLUI=1)
+	endif()
 	target_compile_definitions(${PROJECT_NAME} PRIVATE "MT_BUILDTARGET=1")
 	if(NOT USE_LUAJIT)
 		set_target_properties(${PROJECT_NAME} PROPERTIES

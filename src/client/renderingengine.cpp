@@ -25,6 +25,9 @@
 #include "filesys.h"
 #include "irrlicht_changes/static_text.h"
 #include "irr_ptr.h"
+#if ENABLE_ARACDIA_RMLUI
+#include "client/aracdia/rmlui_manager.h"
+#endif
 
 RenderingEngine *RenderingEngine::s_singleton = nullptr;
 
@@ -226,6 +229,10 @@ RenderingEngine::~RenderingEngine()
 	sanity_check(s_singleton == this);
 
 	g_settings->deregisterAllChangedCallbacks(this);
+
+#if ENABLE_ARACDIA_RMLUI
+	AracdiaRmlUiManager::get().shutdown();
+#endif
 
 	core.reset();
 	m_device->closeDevice();

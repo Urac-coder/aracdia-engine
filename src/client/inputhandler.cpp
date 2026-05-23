@@ -11,6 +11,10 @@
 #include "hud_element.h"
 #include "log_internal.h"
 #include "client/renderingengine.h"
+#include "config.h"
+#if ENABLE_ARACDIA_RMLUI
+#include "client/aracdia/rmlui_manager.h"
+#endif
 
 void MyEventReceiver::reloadKeybindings()
 {
@@ -152,6 +156,12 @@ bool MyEventReceiver::OnEvent(const SEvent &event)
 
 	// This is separate from other keyboard handling so that it also works in menus.
 	if (event.EventType == EET_KEY_INPUT_EVENT) {
+#if ENABLE_ARACDIA_RMLUI
+		if (event.KeyInput.Key == KEY_F8 && event.KeyInput.PressedDown) {
+			AracdiaRmlUiManager::get().toggleVisible();
+			return true;
+		}
+#endif
 		KeyPress keyCode(event.KeyInput);
 
 		if (keySettingHasMatch("keymap_fullscreen", keyCode)) {

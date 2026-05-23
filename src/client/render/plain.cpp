@@ -12,6 +12,10 @@
 #include "client/hud.h"
 #include "client/minimap.h"
 #include "client/shadows/dynamicshadowsrender.h"
+#include "config.h"
+#if ENABLE_ARACDIA_RMLUI
+#include "client/aracdia/rmlui_manager.h"
+#endif
 #include <IGUIEnvironment.h>
 
 /// Draw3D pipeline step
@@ -52,6 +56,14 @@ void DrawHUD::run(PipelineContext &context)
 		context.client->getCamera()->drawNametags();
 	}
 	context.device->getGUIEnvironment()->drawAll();
+#if ENABLE_ARACDIA_RMLUI
+	auto *driver = context.device->getVideoDriver();
+	if (driver) {
+		auto &rmlui = AracdiaRmlUiManager::get();
+		rmlui.init(driver);
+		rmlui.render();
+	}
+#endif
 }
 
 

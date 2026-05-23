@@ -16,6 +16,9 @@
 #include "clientmap.h"
 #include "clientmedia.h" // For clientMediaUpdateCacheCopy
 #include "config.h"
+#if ENABLE_ARACDIA_RMLUI
+#include "client/aracdia/rmlui_manager.h"
+#endif
 #include "content_cao.h"
 #include "content/subgames.h"
 #include "client/event_manager.h"
@@ -3427,6 +3430,9 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 		const CameraOrientation &cam)
 {
 	ZoneScoped;
+#if ENABLE_ARACDIA_RMLUI
+	AracdiaRmlUiManager::get().update(dtime);
+#endif
 	TimeTaker tt_update("Game::updateFrame()");
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
 
