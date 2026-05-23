@@ -135,10 +135,22 @@ jobs:
     env:
       TARGET: x86_64-pc-windows-msvc
       VCPKG_DEFAULT_TRIPLET: x64-windows
+      # Cache vcpkg-compiled deps in GitHub Actions cache. Cuts ~50 min off
+      # subsequent runs that would otherwise rebuild every native dep.
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      # Required for VCPKG_BINARY_SOURCES=x-gha to authenticate against the
+      # GitHub Actions cache backend.
+      - name: Export GitHub Actions cache env
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
@@ -161,19 +173,33 @@ jobs:
         shell: pwsh
         run: cmake --build . --config Release --parallel
 
-      - name: Package via CPack
+      - name: Package via CPack + flatten layout
         shell: pwsh
         run: |
           cpack -G ZIP -B Package
           Remove-Item -Recurse -Force Package\_CPack_Packages -ErrorAction SilentlyContinue
-          Get-ChildItem Package\*.zip
+          # CPack wraps everything under `luanti-<version>-win64/`. Flatten it
+          # so the zip looks like Linux: bin/, share/, ... at the top level.
+          $src = Get-ChildItem Package\*.zip | Select-Object -First 1
+          $extractDir = Join-Path $env:RUNNER_TEMP 'engine-extract'
+          New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+          Expand-Archive -Path $src.FullName -DestinationPath $extractDir -Force
+          $inner = Get-ChildItem -Path $extractDir -Directory | Select-Object -First 1
+          Write-Host "Inner wrapper:" $inner.Name
+          $flatDir = Join-Path $env:RUNNER_TEMP 'engine-flat'
+          if (Test-Path $flatDir) { Remove-Item -Recurse -Force $flatDir }
+          Move-Item $inner.FullName $flatDir
+          $out = Join-Path $env:GITHUB_WORKSPACE "aracdia-engine-$env:TARGET.zip"
+          if (Test-Path $out) { Remove-Item $out }
+          Compress-Archive -Path "$flatDir\*" -DestinationPath $out
+          Write-Host "Flattened zip top entries:"
+          Expand-Archive -Path $out -DestinationPath (Join-Path $env:RUNNER_TEMP 'engine-check') -Force
+          Get-ChildItem (Join-Path $env:RUNNER_TEMP 'engine-check') | ForEach-Object { Write-Host "  $($_.Name)" }
 
-      - name: Rename + sha256
+      - name: SHA-256 sidecar
         shell: pwsh
         run: |
-          $src = Get-ChildItem Package\*.zip | Select-Object -First 1
           $out = "aracdia-engine-$env:TARGET.zip"
-          Move-Item $src.FullName $out
           $hash = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLower()
           Set-Content -NoNewline -Path "$out.sha256" -Value $hash
           Get-Item "$out*"
