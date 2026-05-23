@@ -38,6 +38,12 @@ public:
 	void on_playerReceiveFields(ServerActiveObject *player,
 			const std::string &formname, const StringMap &fields);
 	void on_authplayer(const std::string &name, const std::string &ip, bool is_success);
+	// ARACDIA: server-controlled pause menu (see networkprotocol.h, v53).
+	// Returns true iff at least one Lua handler claimed the request (typically
+	// by having shown a custom formspec via core.show_formspec). The caller is
+	// expected to fall back to the engine's native pause menu when this
+	// returns false.
+	bool on_pause_menu(ServerActiveObject *player);
 
 	// Player inventory callbacks
 	// Return number of accepted items to be moved

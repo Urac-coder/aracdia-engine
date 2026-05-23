@@ -277,6 +277,8 @@ private:
 		CameraOrientation *cam);
 	void handleClientEvent_CloudParams(ClientEvent *event, CameraOrientation *cam);
 	void handleClientEvent_UpdateCamera(ClientEvent *event, CameraOrientation *cam);
+	// ARACDIA: server-controlled pause menu fallback (see networkprotocol.h, v53).
+	void handleClientEvent_ShowNativePauseMenu(ClientEvent *event, CameraOrientation *cam);
 
 	void updateChat(f32 dtime);
 

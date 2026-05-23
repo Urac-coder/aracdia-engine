@@ -1542,6 +1542,14 @@ void Client::sendUpdateClientInfo(const ClientDynamicInfo& info)
 	Send(&pkt);
 }
 
+// ARACDIA: ask the server to handle Esc-in-game (open a server-defined
+// formspec, or fall back to the engine's native pause menu).
+void Client::sendPauseMenu()
+{
+	NetworkPacket pkt(TOSERVER_PAUSE_MENU, 0);
+	Send(&pkt);
+}
+
 void Client::removeNode(v3s16 p)
 {
 	std::map<v3s16, MapBlock*> modified_blocks;

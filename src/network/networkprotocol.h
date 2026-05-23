@@ -709,7 +709,15 @@ enum ToClientCommand : u16
 			u8[len] serialized ParticleParameters
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x65,
+	// ARACDIA: fallback signal sent by the server after TOSERVER_PAUSE_MENU
+	// if no Lua handler claimed the request. The client should then open the
+	// engine's built-in pause menu locally (vanilla behaviour).
+	TOCLIENT_SHOW_NATIVE_PAUSE_MENU = 0x65,
+	/*
+		(no payload)
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x66,
 };
 
 enum ToServerCommand : u16
@@ -916,7 +924,16 @@ enum ToServerCommand : u16
 		v2f32 max_fs_info
 	*/
 
-	TOSERVER_NUM_MSG_TYPES = 0x54,
+	// ARACDIA: client requests the server-controlled pause menu (Esc pressed
+	// in-game with no formspec open). The server runs registered_on_pause_menu
+	// callbacks; if none claim it the server replies with
+	// TOCLIENT_SHOW_NATIVE_PAUSE_MENU so the client opens its built-in menu.
+	TOSERVER_PAUSE_MENU = 0x54,
+	/*
+		(no payload)
+	*/
+
+	TOSERVER_NUM_MSG_TYPES = 0x55,
 };
 
 enum AuthMechanism

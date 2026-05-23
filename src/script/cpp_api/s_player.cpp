@@ -77,6 +77,21 @@ void ScriptApiPlayer::on_rightclickplayer(ServerActiveObject *player,
 	runCallbacks(2, RUN_CALLBACKS_MODE_FIRST);
 }
 
+// ARACDIA: dispatch core.registered_on_pause_menu callbacks.
+// Returns true iff a handler claimed the request. RUN_CALLBACKS_MODE_OR
+// returns the boolean OR of every callback's return value, and false when
+// no callback is registered — exactly the semantics we want for the
+// "fall back to native pause menu" decision in the network handler.
+bool ScriptApiPlayer::on_pause_menu(ServerActiveObject *player)
+{
+	SCRIPTAPI_PRECHECKHEADER
+	lua_getglobal(L, "core");
+	lua_getfield(L, -1, "registered_on_pause_menus");
+	objectrefGetOrCreate(L, player);
+	runCallbacks(1, RUN_CALLBACKS_MODE_OR);
+	return readParam<bool>(L, -1);
+}
+
 s32 ScriptApiPlayer::on_player_hpchange(ServerActiveObject *player,
 	s32 hp_change, const PlayerHPChangeReason &reason)
 {

@@ -1439,7 +1439,21 @@ void Game::processKeyInput()
 		m_android_chat_open = false;
 #endif
 		if (!gui_chat_console->isOpenInhibited()) {
-			m_game_formspec.showPauseMenu();
+			// ARACDIA: instead of opening the engine pause menu directly, ask
+			// the server. A Lua mod registered with `core.register_on_pause_menu`
+			// can handle it; otherwise the server replies with
+			// TOCLIENT_SHOW_NATIVE_PAUSE_MENU and `handleClientEvent_ShowNativePauseMenu`
+			// opens the original menu — preserving vanilla behaviour.
+			//
+			// Compatibility guard: vanilla Luanti servers (protocol < 53)
+			// don't know TOSERVER_PAUSE_MENU. A patched Aracdia client talking
+			// to such a server would just hang on Esc, so we open the native
+			// menu locally in that case.
+			if (client->getProtoVersion() >= 53) {
+				client->sendPauseMenu();
+			} else {
+				m_game_formspec.showPauseMenu();
+			}
 		}
 	} else if (wasKeyDown(KeyType::CHAT)) {
 		openConsole(0.2, L"");
@@ -2189,6 +2203,9 @@ const ClientEventHandler Game::clientEventHandler[CLIENTEVENT_MAX] = {
 	{&Game::handleClientEvent_OverrideDayNightRatio},
 	{&Game::handleClientEvent_CloudParams},
 	{&Game::handleClientEvent_UpdateCamera},
+	// ARACDIA: server-controlled pause menu fallback (must be in the same
+	// order as ClientEventType in clientevent.h).
+	{&Game::handleClientEvent_ShowNativePauseMenu},
 };
 
 void Game::handleClientEvent_None(ClientEvent *event, CameraOrientation *cam)
@@ -2267,6 +2284,20 @@ void Game::handleClientEvent_ShowPauseMenuFormSpec(ClientEvent *event, CameraOri
 
 	delete event->show_formspec.formspec;
 	delete event->show_formspec.formname;
+}
+
+// ARACDIA: server told us no Lua handler claimed the pause menu. Open the
+// engine's built-in pause menu — same code path as `cancelPressed()` had
+// before we routed through the server. Mirrors the chat-console-inhibition
+// guard for safety, even though the network round-trip cannot happen while
+// the chat console is open.
+void Game::handleClientEvent_ShowNativePauseMenu(ClientEvent *event, CameraOrientation *cam)
+{
+	(void)event;
+	(void)cam;
+	if (gui_chat_console && gui_chat_console->isOpenInhibited())
+		return;
+	m_game_formspec.showPauseMenu();
 }
 
 void Game::handleClientEvent_HandleParticleEvent(ClientEvent *event,

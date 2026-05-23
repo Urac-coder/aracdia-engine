@@ -1838,3 +1838,31 @@ void Server::handleCommand_UpdateClientInfo(NetworkPacket *pkt)
 	RemoteClient *client = getClient(peer_id, CS_Invalid);
 	client->setDynamicInfo(info);
 }
+
+// ARACDIA: server-controlled pause menu.
+// The client sends this packet when Esc is pressed in-game (no formspec
+// open). We dispatch the request to all `core.register_on_pause_menu`
+// handlers in RUN_CALLBACKS_MODE_OR. If at least one handler returns true
+// (typically by having opened a custom formspec), we consider the request
+// served. Otherwise we tell the client to fall back to the engine's native
+// pause menu, preserving vanilla behaviour for users with no mod hooked.
+void Server::handleCommand_PauseMenu(NetworkPacket *pkt)
+{
+	session_t peer_id = pkt->getPeerId();
+	RemotePlayer *player = m_env->getPlayer(peer_id);
+	if (!player) {
+		warningstream << FUNCTION_NAME << ": player is null" << std::endl;
+		return;
+	}
+	PlayerSAO *playersao = player->getPlayerSAO();
+	if (!playersao) {
+		warningstream << FUNCTION_NAME << ": player SAO is null" << std::endl;
+		return;
+	}
+
+	bool handled = m_script->on_pause_menu(playersao);
+	if (!handled) {
+		NetworkPacket reply(TOCLIENT_SHOW_NATIVE_PAUSE_MENU, 0, peer_id);
+		Send(&reply);
+	}
+}

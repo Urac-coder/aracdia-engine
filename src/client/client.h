@@ -214,6 +214,8 @@ public:
 	void handleCommand_MinimapModes(NetworkPacket *pkt);
 	void handleCommand_SetLighting(NetworkPacket *pkt);
 	void handleCommand_Camera(NetworkPacket* pkt);
+	// ARACDIA: server-controlled pause menu fallback (see networkprotocol.h, v53).
+	void handleCommand_ShowNativePauseMenu(NetworkPacket *pkt);
 
 	void ProcessData(NetworkPacket *pkt);
 
@@ -235,6 +237,11 @@ public:
 	void sendReady();
 	void sendHaveMedia(const std::vector<u32> &tokens);
 	void sendUpdateClientInfo(const ClientDynamicInfo &info);
+	// ARACDIA: ask the server to display its pause menu (Esc pressed
+	// in-game with no formspec). Server replies either by opening a
+	// custom formspec via core.show_formspec, or by sending
+	// TOCLIENT_SHOW_NATIVE_PAUSE_MENU back so we open the native menu.
+	void sendPauseMenu();
 
 	ClientEnvironment& getEnv() { return m_env; }
 	ITextureSource *tsrc() { return getTextureSource(); }

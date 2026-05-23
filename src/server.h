@@ -241,6 +241,8 @@ public:
 	void handleCommand_SrpBytesM(NetworkPacket* pkt);
 	void handleCommand_HaveMedia(NetworkPacket *pkt);
 	void handleCommand_UpdateClientInfo(NetworkPacket *pkt);
+	// ARACDIA: server-controlled pause menu (see networkprotocol.h, v53).
+	void handleCommand_PauseMenu(NetworkPacket *pkt);
 
 	void ProcessData(NetworkPacket *pkt);
 

@@ -978,6 +978,18 @@ void Client::handleCommand_ShowFormSpec(NetworkPacket* pkt)
 	m_client_event_queue.push(event);
 }
 
+// ARACDIA: server-controlled pause menu fallback (see networkprotocol.h, v53).
+// The server sends this packet (no payload) when no Lua handler claimed the
+// TOSERVER_PAUSE_MENU request — the client must therefore open its built-in
+// pause menu locally, just like vanilla Luanti would.
+void Client::handleCommand_ShowNativePauseMenu(NetworkPacket *pkt)
+{
+	(void)pkt; // no payload
+	ClientEvent *event = new ClientEvent();
+	event->type = CE_SHOW_NATIVE_PAUSE_MENU;
+	m_client_event_queue.push(event);
+}
+
 void Client::handleCommand_SpawnParticle(NetworkPacket* pkt)
 {
 	std::string datastring(pkt->getString(0), pkt->getSize());

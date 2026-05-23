@@ -78,10 +78,17 @@
 		Added "skip_wield_anim" to TOCLIENT_INVENTORY
 		Type of TOCLIENT_HUDADD `size` changed from v2s32 to v2f
 		[scheduled bump for 5.16.0]
+	PROTOCOL VERSION 53
+		ARACDIA: server-controlled pause menu.
+		Added TOSERVER_PAUSE_MENU and TOCLIENT_SHOW_NATIVE_PAUSE_MENU.
+		The client no longer opens its built-in pause menu directly when Esc
+		is pressed in-game; it asks the server, which can either show a
+		custom formspec via core.register_on_pause_menu or fall back to the
+		native menu via TOCLIENT_SHOW_NATIVE_PAUSE_MENU.
 */
 
 // Note: Also update core.protocol_versions in builtin when bumping
-const u16 LATEST_PROTOCOL_VERSION = 52;
+const u16 LATEST_PROTOCOL_VERSION = 53;
 
 // See also formspec [Version History] in doc/lua_api.md
 const u16 FORMSPEC_API_VERSION = 10;

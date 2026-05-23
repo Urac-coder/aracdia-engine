@@ -620,6 +620,12 @@ core.registered_allow_player_inventory_actions, core.register_allow_player_inven
 core.registered_on_rightclickplayers, core.register_on_rightclickplayer = make_registration()
 core.registered_on_liquid_transformed, core.register_on_liquid_transformed = make_registration()
 core.registered_on_mapblocks_changed, core.register_on_mapblocks_changed = make_registration()
+-- ARACDIA: server-controlled pause menu (see networkprotocol.h, v53).
+-- Each handler receives the ObjectRef of the player who pressed Esc.
+-- Return true to consume the request (typically after calling
+-- core.show_formspec); return false / nothing to fall back to the engine's
+-- native pause menu on that client.
+core.registered_on_pause_menus, core.register_on_pause_menu = make_registration()
 
 -- A bunch of registrations are read by the C++ side once on env init, so we cannot
 -- allow them to change afterwards (see s_env.cpp).

@@ -37,6 +37,9 @@ enum ClientEventType : u8
 	CE_OVERRIDE_DAY_NIGHT_RATIO,
 	CE_CLOUD_PARAMS,
 	CE_UPDATE_CAMERA,
+	// ARACDIA: server fallback signal — open the engine's native pause menu
+	// because no Lua handler claimed the TOSERVER_PAUSE_MENU request.
+	CE_SHOW_NATIVE_PAUSE_MENU,
 	CLIENTEVENT_MAX,
 };
 
